@@ -1,70 +1,78 @@
-import express from "express"
-import bodyParser from "body-parser"
-
+import express from "express"; 
+import bodyParser from "body-parser";  
+import mongoose from "mongoose";
+import authRouth from "./routes/auth.js"
+import 'dotenv/config'
 const app = express();
 const port = 3000;
 
-const Users=[]
+// Creating an array to store user data
+const Posts = [];
+const Likes = {};
+const Comments = {};
 
-app.use(bodyParser.urlencoded({extended: true}));
+// Using body-parser middleware to parse URL-encoded request bodies
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serving static files from the "public" directory
 app.use(express.static("public"));
 
-
-app.get("/",(req,res)=>{
-    res.render("home.ejs")
-})
-
-app.get("/register",(req,res)=>{
-    res.render("register.ejs")
-})
+mongoose.connect(process.env.MONGO_URL);
 
 
-app.get("/login",(req,res)=>{
-    res.render("login.ejs")
-})
+app.use("/", authRouth);
 
-app.post("/register",(req,res)=>{
-    const { username, email, password } = req.body;
-    Users.push({ username, email, password });
-    res.status(201).json({ message: 'User registered successfully' });
-})
-
-
-
-
-
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    const user = Users.find((u) => u.username === username && u.password === password);
-    if (user) {
-      res.json({ message: 'Login successful' });
-    } else {
-      res.status(401).json({ message: 'Login failed' });
-    }
-  });
-
-
-
-app.get("/forget-password",(req,res)=>{
-  res.render("forget.ejs")
-})
-
-
-
-app.post('/forget-password', (req, res) => {
-  const { email } = req.body;
-  const user = Users.find((u)=>{
-    if (!u) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    else{
-      u.password=req.body.password
-      return res.status(201).json({ message: 'Password Reset Successfull' });
-    }
-  });
+// Create a new post
+app.post("/posts", (req, res) => {
+    const { username, content } = req.body;
+    console.log(username,content)
+    const postId = Posts.length + 1;
+    const post = { id: postId, "username":username,"content":content, likes: 0, comments: [] };
+    Posts.push(post);
+    res.status(201).json({ message: 'Post created successfully', post });
 });
 
+// Get all posts
+app.get("/posts", (req, res) => {
+    res.json({ posts: Posts });
+});
 
-app.listen(process.env.PORT || port,()=>{
-    console.log("Server is Running :"+port)
-})
+// Like a post
+app.post("/posts/:id/like", (req, res) => {
+    const postId = parseInt(req.params.id);
+    if (Likes[postId]) {
+        Likes[postId]++;
+    } else {
+        Likes[postId] = 1;
+    }
+    res.json({ message: 'Post liked successfully', likes: Likes[postId] });
+});
+
+// Add a comment to a post
+app.post("/posts/:id/comment", (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { username, text } = req.body;
+    const comment = { username, text };
+    if (Comments[postId]) {
+        Comments[postId].push(comment);
+    } else {
+        Comments[postId] = [comment];
+    }
+    res.json({ message: 'Comment added successfully', comment });
+});
+
+// Get comments for a post
+app.get("/posts/:id/comments", (req, res) => {
+    const postId = parseInt(req.params.id);
+    const comments = Comments[postId] || [];
+    res.json({ comments });
+});
+
+// ... Rest of your code ...
+
+
+
+// Starting the server on the specified port or a default port
+app.listen(process.env.PORT || port, () => {
+    console.log("Server is Running :" + port);
+});
