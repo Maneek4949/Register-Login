@@ -22,7 +22,7 @@ router.get("/",jwtAuth, async(req, res) => {
 });
 //update post
 
-router.put("/:id/content", async (req, res) => {
+router.put("/:id/content",jwtAuth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (post.username === req.body.username) {
@@ -38,7 +38,7 @@ router.put("/:id/content", async (req, res) => {
 });
 
 //Delet Post
-router.delete("/:id/delete", async (req, res) => {
+router.delete("/:id/delete",jwtAuth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (post.username === req.body.username) {
@@ -53,7 +53,7 @@ router.delete("/:id/delete", async (req, res) => {
 });
 
 // Like/dislike a post
-router.put("/:id/like", async (req, res) => {
+router.put("/:id/like",jwtAuth, async (req, res) => {
     try {
       const post = await Post.findById(req.params.id);
       if (!post.likes.includes(req.body.username)) {
@@ -68,7 +68,7 @@ router.put("/:id/like", async (req, res) => {
     }
   });
 // Add a comment to a post
-router.put("/:id/comment", async(req, res) => {
+router.put("/:id/comment",jwtAuth, async(req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     await post.updateOne({ $push: { comments:  req.body.comment}});
