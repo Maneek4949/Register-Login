@@ -1,7 +1,10 @@
 import express from 'express';
 import User from '../models/User.js';
+import bcrypt from 'bcrypt';
+
 
 const router = express.Router();
+
 
 // Handling the root route and rendering the "home.ejs" template
 router.get("/", (req, res) => {
@@ -21,11 +24,23 @@ router.get("/login", (req, res) => {
 // Handling the POST request to register a new user
 router.post("/register", async (req, res) => {
     try {
-        const found = await User.find({ username: req.body.username, email: req.body.email });
-        if (found.length > 0) {
+        const found = await User.findOne({ username: req.body.username });
+        if (found) {
             res.status(201).json({ message: 'User Already Exists' });
         } else {
-            const newUser = new User({ email: req.body.email, password: req.body.password, username: req.body.username });
+            // Hash the user's password before saving it
+            const hashedPassword = await bcrypt.hash(req.body.password, 10); // 10 is the number of salt rounds
+
+            const newUser = new User({
+                email: req.body.email,
+                password: hashedPassword, // Store the hashed password
+                username: req.body.username
+            });
+            const token = await newUser.generateAuthToken();
+            res.cookie("jwt", token, {
+                expiresIn: '1h',
+                httpOnly: true
+            });
             await newUser.save();
             console.log('User Created');
             res.status(201).json({ message: 'User registered successfully' });
@@ -37,11 +52,25 @@ router.post("/register", async (req, res) => {
 });
 
 // Handling the POST request for user login
+// Handling the POST request for user login
 router.post('/login', async (req, res) => {
     try {
-        const user = await User.find({ username: req.body.username, password: req.body.password });
-        if (user.length > 0) {
-            res.json({ message: 'Login successful' });
+        const user = await User.findOne({ username: req.body.username });
+        if (!user) {
+            res.status(401).json({ message: 'Login failed' });
+            return;
+        }
+
+        // Compare the provided password with the stored hashed password
+        const isPasswordValid = await bcrypt.compare(req.body.password, user.password);
+
+        if (isPasswordValid) {
+            const token = await user.generateAuthToken();
+            res.cookie("jwt", token, {
+                expiresIn: '1h',
+                httpOnly: true
+            });
+            res.status(201).json({ message: 'Login successful' });
         } else {
             res.status(401).json({ message: 'Login failed' });
         }
@@ -50,6 +79,7 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ error: 'Server Error' });
     }
 });
+
 
 // Handling the "/forget-password" route and rendering the "forget.ejs" template
 router.get("/forget-password", (req, res) => {

@@ -1,6 +1,8 @@
 import express from 'express';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
+import jwtAuth from '../middleware/jwtauth.js';
+
 
 const router = express.Router();
 // Create a new post
@@ -15,7 +17,7 @@ router.post("/", async(req, res) => {
 });
 
 // Get all posts
-router.get("/", async(req, res) => {
+router.get("/",jwtAuth, async(req, res) => {
     res.json({ posts: await Post.find({})});
 });
 //update post
